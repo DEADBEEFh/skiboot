@@ -5,14 +5,14 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Nvlink Device Tree Bindings &#8212; skiboot v5.8-rc1-1-g87f1c8745d33-stewart-dirty-1892193
+    <title>Nvlink Device Tree Bindings &#8212; skiboot v5.8-72-g3f936bae970e
  documentation</title>
     <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     'v5.8-rc1-1-g87f1c8745d33-stewart-dirty-1892193',
+        VERSION:     'v5.8-72-g3f936bae970e',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -40,7 +40,7 @@
         <li class="right" >
           <a href="imc.html" title="IMC Device Tree Bindings"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-rc1-1-g87f1c8745d33-stewart-dirty-1892193
+        <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-72-g3f936bae970e
  documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Device Tree</a> &#187;</li> 
       </ul>
@@ -147,7 +147,12 @@
                  <span class="nf">vendor-id</span> <span class="o">=</span> <span class="p">&lt;</span><span class="mh">0x1014</span><span class="p">&gt;;</span>
                  <span class="nf">ibm,gpu</span> <span class="o">=</span> <span class="p">&lt;</span><span class="mh">0x100002f7</span><span class="p">&gt;;</span> <span class="cm">/* phandle pointing the associated GPU PCI device node */</span>
                  <span class="nf">memory-region</span> <span class="o">=</span> <span class="p">&lt;</span><span class="mh">0x10000abc</span><span class="p">&gt;;</span> <span class="cm">/* phandle pointing to the GPU memory */</span>
-                 <span class="nf">phandle</span> <span class="o">=</span> <span class="p">&lt;</span><span class="mh">0x100002fc</span><span class="p">&gt;;</span>
+                 <span class="nf">ibm,nvlink-speed</span> <span class="o">=</span> <span class="p">&lt;</span><span class="mh">0x1</span><span class="p">&gt;;</span>
+
+         <span class="err">;</span> <span class="err">Denotes</span> <span class="err">the</span> <span class="err">speed</span> <span class="err">the</span> <span class="err">link</span> <span class="err">is</span> <span class="err">running</span> <span class="nl">at</span><span class="p">:</span>
+         <span class="err">;</span> <span class="nf">0x3</span> <span class="o">=</span><span class="err">=</span> <span class="mi">20</span> <span class="err">Gbps</span><span class="p">,</span> <span class="mh">0x8</span> <span class="err">=</span> <span class="mi">25</span><span class="err">.</span><span class="mi">78125</span> <span class="err">Gbps</span><span class="p">,</span> <span class="mh">0x9</span> <span class="err">==</span> <span class="mi">25</span><span class="err">.</span><span class="mo">00000</span> <span class="err">Gbps</span>
+
+                 <span class="err">phandle</span> <span class="err">=</span> <span class="p">&lt;</span><span class="mh">0x100002fc</span><span class="p">&gt;;</span>
          <span class="p">};</span>
 
          <span class="nc">pci</span><span class="nf">@1</span> <span class="p">{</span>
@@ -251,7 +256,7 @@
         <li class="right" >
           <a href="imc.html" title="IMC Device Tree Bindings"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-rc1-1-g87f1c8745d33-stewart-dirty-1892193
+        <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-72-g3f936bae970e
  documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="index.html" >Device Tree</a> &#187;</li> 
       </ul>

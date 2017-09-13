@@ -5,7 +5,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>skiboot-5.8-rc1 &#8212; skiboot v5.8-72-g3f936bae970e
+    <title>skiboot-5.8 &#8212; skiboot v5.8-72-g3f936bae970e
  documentation</title>
     <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -24,7 +24,8 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="prev" title="skiboot-5.8" href="skiboot-5.8.html" /> 
+    <link rel="next" title="skiboot-5.8-rc1" href="skiboot-5.8-rc1.html" />
+    <link rel="prev" title="skiboot-5.7-rc2" href="skiboot-5.7-rc2.html" /> 
   </head>
   <body>
     <div class="related" role="navigation" aria-label="related navigation">
@@ -34,7 +35,10 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="skiboot-5.8.html" title="skiboot-5.8"
+          <a href="skiboot-5.8-rc1.html" title="skiboot-5.8-rc1"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="skiboot-5.7-rc2.html" title="skiboot-5.7-rc2"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-72-g3f936bae970e
  documentation</a> &#187;</li>
@@ -47,20 +51,16 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="skiboot-5-8-rc1">
-<span id="id1"></span><h1>skiboot-5.8-rc1<a class="headerlink" href="#skiboot-5-8-rc1" title="Permalink to this headline">¶</a></h1>
-<p>skiboot v5.8-rc1 was released on Tuesday August 22nd 2017. It is the first
-release candidate of skiboot 5.8, which will become the new stable release
-of skiboot following the 5.7 release, first released 25th July 2017.</p>
-<p>skiboot v5.8-rc1 contains all bug fixes as of <a class="reference internal" href="skiboot-5.4.6.html#skiboot-5-4-6"><span class="std std-ref">skiboot-5.4.6</span></a>
+  <div class="section" id="skiboot-5-8">
+<span id="id1"></span><h1>skiboot-5.8<a class="headerlink" href="#skiboot-5-8" title="Permalink to this headline">¶</a></h1>
+<p>skiboot v5.8 was released on Thursday August 31st 2017. It is the first
+release of skiboot 5.8, which becomes the new stable release.
+It follows the 5.7 release, first released 25th July 2017.</p>
+<p>skiboot v5.8 contains all bug fixes as of <a class="reference internal" href="skiboot-5.4.6.html#skiboot-5-4-6"><span class="std std-ref">skiboot-5.4.6</span></a>
 and <a class="reference internal" href="skiboot-5.1.20.html#skiboot-5-1-20"><span class="std std-ref">skiboot-5.1.20</span></a> (the currently maintained stable releases). We
 do not currently expect to do any 5.7.x stable releases.</p>
 <p>For how the skiboot stable releases work, see <a class="reference internal" href="../stable-skiboot-rules.html#stable-rules"><span class="std std-ref">Skiboot stable tree rules and releases</span></a> for details.</p>
-<p>The current plan is to cut the final 5.8 by August 25th, with skiboot 5.8
-being for all POWER8 and POWER9 platforms in op-build v1.19 (Due August 25th).
-This is a short cycle as this release is mainly targetted towards POWER9
-bringup efforts.</p>
-<p>Over skiboot-5.7, we have the following changes:</p>
+<p>Over <a class="reference internal" href="skiboot-5.7.html#skiboot-5-7"><span class="std std-ref">skiboot-5.7</span></a>, we have the following changes:</p>
 <div class="section" id="new-features">
 <h2>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h2>
 <ul>
@@ -138,6 +138,71 @@ work. These bits were unused in DD1.</p>
 </div>
 <div class="section" id="power9">
 <h2>POWER9<a class="headerlink" href="#power9" title="Permalink to this headline">¶</a></h2>
+<p>Since <a class="reference internal" href="skiboot-5.8-rc1.html#skiboot-5-8-rc1"><span class="std std-ref">skiboot-5.8-rc1</span></a>:</p>
+<ul>
+<li><p class="first">hw/npu2.c: Add ibm,nvlink-speed device-tree property</p>
+<p>NVLink2 links can support multiple different speeds. However the device driver
+has no way of determining which speed was programmed so pass it down as a device
+tree property.</p>
+</li>
+<li><p class="first">hw/npu2-hw-procedures.c: Update PHY_RESET procedure</p>
+<p>Newer versions of Hostboot will have various clocks powered down by default
+to save power. Therefore we need to power them up before accessing the OBUS
+PHY.</p>
+</li>
+<li><p class="first">p8-i2c: Fix random data corruption (POWER9 specific)
+While waiting for the OCC to signal that it has finished using the I2C
+master we put the master into the, poorly named, occache_dis state.
+While in this state the transaction hasn’t been started, but
+p8_i2c_check_status() will only skip it’s checks when the master is in
+the idle state. Any action that checks that cranks the I2C state machine
+(interrupt, poll, etc) will call p8_i2c_check_status() and since the
+master is not idle, it will check the status register, see the
+transaction complete flag set and complete the i2c request without
+actually doing anything.</p>
+<p>If the transaction was a I2C read, the resulting output will be a
+zeroed data buffer.</p>
+</li>
+<li><p class="first">hw/p8-i2c: Fix OCC locking (POWER9 specific)</p>
+<p>There’s a few issues with the Host&lt;-&gt;OCC I2C bus handshaking. First up,
+skiboot is currently examining the wrong bit when checking if the OCC
+is currently using the bus. Secondly, when we need to wait for the OCC
+to release the bus we are scheduling a recovery timer to run zero
+timebase ticks after the current moment so the recovery timeout handler
+will run immediately after the bus was requested, which will in turn
+re-schedule itself, etc, etc. There’s also a race between the OCC
+interrupt and the recovery handler which can result in an assertion
+failure in the recovery thread. All of this is bad.</p>
+<p>This patch addresses all these issues and sets the recovery timeout to
+10ms.</p>
+</li>
+<li><p class="first">vas: export chip-id to vas platform device
+This is needed so VAS in the kernel can perform cpu to vas id mapping.</p>
+</li>
+<li><p class="first">slw: Modify the power9 stop0_lite latency &amp; residency</p>
+<p>Currently skiboot exposes the exit-latency for stop0_lite as 200ns and
+the target-residency to be 2us.</p>
+<p>However, the kernel cpu-idle infrastructure rounds up the latency to
+microseconds and lists the stop0_lite latency as 0us, putting it on
+par with snooze state. As a result, when the predicted latency is
+small (&lt; 1us), cpuidle will select stop0_lite instead of snooze. The
+difference between these states is that snooze doesn’t require an
+interrupt to exit from the state, but stop0_lite does. And the value
+200ns doesn’t include the interrupt latency.</p>
+<p>This shows up in the context_switch2 benchmark
+(<a class="reference external" href="http://ozlabs.org/~anton/junkcode/context_switch2.c">http://ozlabs.org/~anton/junkcode/context_switch2.c</a>) where the number
+of context switches per second with the stop0_lite disabled is found
+to be roughly 30% more than with stop0_lite enabled.
+This can be correlated with the number of times cpuidle enters
+stop0_lite compared to snooze.</p>
+<p>Hence, bump up the exit latency of stop0_lite to 1us. Since the target
+residency is chosen to be 10 times the exit latency, set the target
+residency to 10us.</p>
+<p>With these values, we see a 50% improvement in the number of context
+switches.</p>
+</li>
+</ul>
+<p>Since <a class="reference internal" href="skiboot-5.7.html#skiboot-5-7"><span class="std std-ref">skiboot-5.7</span></a>:</p>
 <ul>
 <li><p class="first">Base NPU2 support on POWER9 DD2</p>
 </li>
@@ -455,8 +520,28 @@ not updated by OCC.</p>
 </li>
 </ul>
 </div>
+<div class="section" id="ibm-fsp-systems">
+<h2>IBM FSP systems<a class="headerlink" href="#ibm-fsp-systems" title="Permalink to this headline">¶</a></h2>
+<p>Since <a class="reference internal" href="skiboot-5.8-rc1.html#skiboot-5-8-rc1"><span class="std std-ref">skiboot-5.8-rc1</span></a>:</p>
+<ul>
+<li><p class="first">mktime: fix off-by-one error calling days_in_month</p>
+<p>From auditing all the mktime() users, there seems to be only a <em>very</em>
+small window around new years day where we could possibly return
+incorrect data to the OS, and even then, there would have to be FSP
+reset/reload on FSP machines. I don’t <em>think</em> there’s an opportunity
+on other machines.</p>
+</li>
+</ul>
+</div>
 <div class="section" id="tests">
 <h2>Tests<a class="headerlink" href="#tests" title="Permalink to this headline">¶</a></h2>
+<p>Since <a class="reference internal" href="skiboot-5.8-rc1.html#skiboot-5-8-rc1"><span class="std std-ref">skiboot-5.8-rc1</span></a>:</p>
+<ul class="simple">
+<li>travis: Debian Stretch must pass</li>
+<li>test kernels: link with -N</li>
+<li>core/test/run-msg: don’t depend on unittest mem layout</li>
+</ul>
+<p>Since <a class="reference internal" href="skiboot-5.7.html#skiboot-5-7"><span class="std std-ref">skiboot-5.7</span></a>:</p>
 <ul>
 <li><p class="first">hdata_to_dt: use a realistic PVR and chip revision</p>
 </li>
@@ -504,6 +589,13 @@ performance penalty to breaking up the erase ioctl()s.</p>
 </div>
 <div class="section" id="general">
 <h2>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h2>
+<p>Since <a class="reference internal" href="skiboot-5.8-rc1.html#skiboot-5-8-rc1"><span class="std std-ref">skiboot-5.8-rc1</span></a>:</p>
+<ul class="simple">
+<li>gcov: support GCC 7.1+</li>
+<li>Tests build and pass on Debian
+A few things related to the Debian toolchain.</li>
+</ul>
+<p>Since <a class="reference internal" href="skiboot-5.7.html#skiboot-5-7"><span class="std std-ref">skiboot-5.7</span></a>:</p>
 <ul>
 <li><p class="first">opal-msg: Increase the max-async completion count by max chips possible</p>
 </li>
@@ -520,6 +612,402 @@ on modern P9 as we only have one entry point (we don’t do the PHYP LID hack).<
 </li>
 </ul>
 </div>
+<div class="section" id="contributors">
+<h2>Contributors<a class="headerlink" href="#contributors" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Processed 156 csets from 17 developers</li>
+<li>1 employers found</li>
+<li>A total of 6888 lines added, 1089 removed (delta 5799)</li>
+</ul>
+<div class="section" id="developers-with-the-most-changesets">
+<h3>Developers with the most changesets<a class="headerlink" href="#developers-with-the-most-changesets" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="72%" />
+<col width="8%" />
+<col width="19%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Developer</th>
+<th class="head">#</th>
+<th class="head">%</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Cyril Bur</td>
+<td>35</td>
+<td>(22.4%)</td>
+</tr>
+<tr class="row-odd"><td>Stewart Smith</td>
+<td>32</td>
+<td>(20.5%)</td>
+</tr>
+<tr class="row-even"><td>Michael Neuling</td>
+<td>23</td>
+<td>(14.7%)</td>
+</tr>
+<tr class="row-odd"><td>Sukadev Bhattiprolu</td>
+<td>11</td>
+<td>(7.1%)</td>
+</tr>
+<tr class="row-even"><td>Reza Arbab</td>
+<td>10</td>
+<td>(6.4%)</td>
+</tr>
+<tr class="row-odd"><td>Russell Currey</td>
+<td>9</td>
+<td>(5.8%)</td>
+</tr>
+<tr class="row-even"><td>Shilpasri G Bhat</td>
+<td>9</td>
+<td>(5.8%)</td>
+</tr>
+<tr class="row-odd"><td>Oliver O’Halloran</td>
+<td>5</td>
+<td>(3.2%)</td>
+</tr>
+<tr class="row-even"><td>Haren Myneni</td>
+<td>5</td>
+<td>(3.2%)</td>
+</tr>
+<tr class="row-odd"><td>Alistair Popple</td>
+<td>4</td>
+<td>(2.6%)</td>
+</tr>
+<tr class="row-even"><td>Vasant Hegde</td>
+<td>4</td>
+<td>(2.6%)</td>
+</tr>
+<tr class="row-odd"><td>Nicholas Piggin</td>
+<td>3</td>
+<td>(1.9%)</td>
+</tr>
+<tr class="row-even"><td>Andrew Donnellan</td>
+<td>2</td>
+<td>(1.3%)</td>
+</tr>
+<tr class="row-odd"><td>Gautham R. Shenoy</td>
+<td>1</td>
+<td>(0.6%)</td>
+</tr>
+<tr class="row-even"><td>Mahesh Salgaonkar</td>
+<td>1</td>
+<td>(0.6%)</td>
+</tr>
+<tr class="row-odd"><td>Ananth N Mavinakayanahalli</td>
+<td>1</td>
+<td>(0.6%)</td>
+</tr>
+<tr class="row-even"><td>Frederic Barrat</td>
+<td>1</td>
+<td>(0.6%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="developers-with-the-most-changed-lines">
+<h3>Developers with the most changed lines<a class="headerlink" href="#developers-with-the-most-changed-lines" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="70%" />
+<col width="11%" />
+<col width="19%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Developer</th>
+<th class="head">#</th>
+<th class="head">%</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Shilpasri G Bhat</td>
+<td>1935</td>
+<td>(27.9%)</td>
+</tr>
+<tr class="row-odd"><td>Cyril Bur</td>
+<td>1868</td>
+<td>(26.9%)</td>
+</tr>
+<tr class="row-even"><td>Stewart Smith</td>
+<td>866</td>
+<td>(12.5%)</td>
+</tr>
+<tr class="row-odd"><td>Sukadev Bhattiprolu</td>
+<td>663</td>
+<td>(9.5%)</td>
+</tr>
+<tr class="row-even"><td>Haren Myneni</td>
+<td>584</td>
+<td>(8.4%)</td>
+</tr>
+<tr class="row-odd"><td>Michael Neuling</td>
+<td>384</td>
+<td>(5.5%)</td>
+</tr>
+<tr class="row-even"><td>Frederic Barrat</td>
+<td>168</td>
+<td>(2.4%)</td>
+</tr>
+<tr class="row-odd"><td>Reza Arbab</td>
+<td>98</td>
+<td>(1.4%)</td>
+</tr>
+<tr class="row-even"><td>Oliver O’Halloran</td>
+<td>98</td>
+<td>(1.4%)</td>
+</tr>
+<tr class="row-odd"><td>Vasant Hegde</td>
+<td>93</td>
+<td>(1.3%)</td>
+</tr>
+<tr class="row-even"><td>Alistair Popple</td>
+<td>77</td>
+<td>(1.1%)</td>
+</tr>
+<tr class="row-odd"><td>Russell Currey</td>
+<td>60</td>
+<td>(0.9%)</td>
+</tr>
+<tr class="row-even"><td>Mahesh Salgaonkar</td>
+<td>28</td>
+<td>(0.4%)</td>
+</tr>
+<tr class="row-odd"><td>Andrew Donnellan</td>
+<td>11</td>
+<td>(0.2%)</td>
+</tr>
+<tr class="row-even"><td>Gautham R. Shenoy</td>
+<td>6</td>
+<td>(0.1%)</td>
+</tr>
+<tr class="row-odd"><td>Nicholas Piggin</td>
+<td>4</td>
+<td>(0.1%)</td>
+</tr>
+<tr class="row-even"><td>Ananth N Mavinakayanahalli</td>
+<td>1</td>
+<td>(0.0%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="developers-with-the-most-signoffs">
+<h3>Developers with the most signoffs<a class="headerlink" href="#developers-with-the-most-signoffs" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="72%" />
+<col width="8%" />
+<col width="19%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Developer</th>
+<th class="head">#</th>
+<th class="head">%</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Stewart Smith</td>
+<td>124</td>
+<td>(97.6%)</td>
+</tr>
+<tr class="row-odd"><td>Benjamin Herrenschmidt</td>
+<td>2</td>
+<td>(1.6%)</td>
+</tr>
+<tr class="row-even"><td>Vaidyanathan Srinivasan</td>
+<td>1</td>
+<td>(0.8%)</td>
+</tr>
+<tr class="row-odd"><td>Total</td>
+<td>127</td>
+<td>(100%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="developers-with-the-most-reviews">
+<h3>Developers with the most reviews<a class="headerlink" href="#developers-with-the-most-reviews" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="75%" />
+<col width="6%" />
+<col width="19%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Developer</th>
+<th class="head">#</th>
+<th class="head">%</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Samuel Mendoza-Jonas</td>
+<td>19</td>
+<td>(52.8%)</td>
+</tr>
+<tr class="row-odd"><td>Andrew Donnellan</td>
+<td>11</td>
+<td>(30.6%)</td>
+</tr>
+<tr class="row-even"><td>Vasant Hegde</td>
+<td>2</td>
+<td>(5.6%)</td>
+</tr>
+<tr class="row-odd"><td>Cédric Le Goater</td>
+<td>1</td>
+<td>(2.8%)</td>
+</tr>
+<tr class="row-even"><td>Russell Currey</td>
+<td>1</td>
+<td>(2.8%)</td>
+</tr>
+<tr class="row-odd"><td>Reza Arbab</td>
+<td>1</td>
+<td>(2.8%)</td>
+</tr>
+<tr class="row-even"><td>Cyril Bur</td>
+<td>1</td>
+<td>(2.8%)</td>
+</tr>
+<tr class="row-odd"><td>Total</td>
+<td>36</td>
+<td>(100%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="developers-with-the-most-test-credits">
+<h3>Developers with the most test credits<a class="headerlink" href="#developers-with-the-most-test-credits" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="75%" />
+<col width="6%" />
+<col width="19%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Developer</th>
+<th class="head">#</th>
+<th class="head">%</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Vasant Hegde</td>
+<td>1</td>
+<td>(50.0%)</td>
+</tr>
+<tr class="row-odd"><td>Hari Bathini</td>
+<td>1</td>
+<td>(50.0%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="developers-who-gave-the-most-tested-by-credits">
+<h3>Developers who gave the most tested-by credits<a class="headerlink" href="#developers-who-gave-the-most-tested-by-credits" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="75%" />
+<col width="6%" />
+<col width="19%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Developer</th>
+<th class="head">#</th>
+<th class="head">%</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Russell Currey</td>
+<td>1</td>
+<td>(50.0%)</td>
+</tr>
+<tr class="row-odd"><td>Mahesh Salgaonkar</td>
+<td>1</td>
+<td>(50.0%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="developers-with-the-most-report-credits">
+<h3>Developers with the most report credits<a class="headerlink" href="#developers-with-the-most-report-credits" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="75%" />
+<col width="6%" />
+<col width="19%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Developer</th>
+<th class="head">#</th>
+<th class="head">%</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Anton Blanchard</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+<tr class="row-odd"><td>Mark Linimon</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+<tr class="row-even"><td>Pavaman Subramaniyam</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+<tr class="row-odd"><td>Pridhiviraj Paidipeddi</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+<tr class="row-even"><td>Rob Lippert</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+<tr class="row-odd"><td>Michael Neuling</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="developers-who-gave-the-most-report-credits">
+<h3>Developers who gave the most report credits<a class="headerlink" href="#developers-who-gave-the-most-report-credits" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="75%" />
+<col width="6%" />
+<col width="19%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Developer</th>
+<th class="head">#</th>
+<th class="head">%</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Stewart Smith</td>
+<td>2</td>
+<td>(33.3%)</td>
+</tr>
+<tr class="row-odd"><td>Michael Neuling</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+<tr class="row-even"><td>Andrew Donnellan</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+<tr class="row-odd"><td>Cyril Bur</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+<tr class="row-even"><td>Gautham R. Shenoy</td>
+<td>1</td>
+<td>(16.7%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 
 
@@ -530,7 +1018,7 @@ on modern P9 as we only have one entry point (we don’t do the PHYP LID hack).<
         <div class="sphinxsidebarwrapper">
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">skiboot-5.8-rc1</a><ul>
+<li><a class="reference internal" href="#">skiboot-5.8</a><ul>
 <li><a class="reference internal" href="#new-features">New Features</a></li>
 <li><a class="reference internal" href="#power9-dd2">POWER9 DD2</a></li>
 <li><a class="reference internal" href="#power9">POWER9</a></li>
@@ -538,19 +1026,34 @@ on modern P9 as we only have one entry point (we don’t do the PHYP LID hack).<
 <li><a class="reference internal" href="#utilities">Utilities</a></li>
 <li><a class="reference internal" href="#opal-prd">opal-prd</a></li>
 <li><a class="reference internal" href="#opal-sensors">OPAL Sensors</a></li>
+<li><a class="reference internal" href="#ibm-fsp-systems">IBM FSP systems</a></li>
 <li><a class="reference internal" href="#tests">Tests</a></li>
 <li><a class="reference internal" href="#general">General</a></li>
+<li><a class="reference internal" href="#contributors">Contributors</a><ul>
+<li><a class="reference internal" href="#developers-with-the-most-changesets">Developers with the most changesets</a></li>
+<li><a class="reference internal" href="#developers-with-the-most-changed-lines">Developers with the most changed lines</a></li>
+<li><a class="reference internal" href="#developers-with-the-most-signoffs">Developers with the most signoffs</a></li>
+<li><a class="reference internal" href="#developers-with-the-most-reviews">Developers with the most reviews</a></li>
+<li><a class="reference internal" href="#developers-with-the-most-test-credits">Developers with the most test credits</a></li>
+<li><a class="reference internal" href="#developers-who-gave-the-most-tested-by-credits">Developers who gave the most tested-by credits</a></li>
+<li><a class="reference internal" href="#developers-with-the-most-report-credits">Developers with the most report credits</a></li>
+<li><a class="reference internal" href="#developers-who-gave-the-most-report-credits">Developers who gave the most report credits</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="skiboot-5.8.html"
-                        title="previous chapter">skiboot-5.8</a></p>
+  <p class="topless"><a href="skiboot-5.7-rc2.html"
+                        title="previous chapter">skiboot-5.7-rc2</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="skiboot-5.8-rc1.html"
+                        title="next chapter">skiboot-5.8-rc1</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="../_sources/release-notes/skiboot-5.8-rc1.rst.txt"
+      <li><a href="../_sources/release-notes/skiboot-5.8.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
@@ -575,7 +1078,10 @@ on modern P9 as we only have one entry point (we don’t do the PHYP LID hack).<
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="skiboot-5.8.html" title="skiboot-5.8"
+          <a href="skiboot-5.8-rc1.html" title="skiboot-5.8-rc1"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="skiboot-5.7-rc2.html" title="skiboot-5.7-rc2"
              >previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-72-g3f936bae970e
  documentation</a> &#187;</li>

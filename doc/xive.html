@@ -5,14 +5,14 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>P9 XIVE Exploitation &#8212; skiboot v5.8-rc1-1-g87f1c8745d33-stewart-dirty-1892193
+    <title>P9 XIVE Exploitation &#8212; skiboot v5.8-72-g3f936bae970e
  documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     'v5.8-rc1-1-g87f1c8745d33-stewart-dirty-1892193',
+        VERSION:     'v5.8-72-g3f936bae970e',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -40,7 +40,7 @@
         <li class="right" >
           <a href="xscom-node-bindings.html" title="XSCOM Bindings"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">skiboot v5.8-rc1-1-g87f1c8745d33-stewart-dirty-1892193
+        <li class="nav-item nav-item-0"><a href="index.html">skiboot v5.8-72-g3f936bae970e
  documentation</a> &#187;</li> 
       </ul>
     </div>  
@@ -387,7 +387,8 @@ isn’t fully functional.</p>
 EOI page physical address (always) and the trigger page address
 (if it exists).
 The trigger page may exist even if OPAL_XIVE_IRQ_TRIGGER_PAGE
-is not set. In that case out_trig_page is equal to out_eoi_page.</li>
+is not set. In that case out_trig_page is equal to out_eoi_page.
+If the trigger page doesn’t exist, out_trig_page is set to 0.</li>
 <li>out_esb_shift contains the size (as an order, ie 2^n) of the
 EOI and trigger pages. Current supported values are 12 (4k)
 and 16 (64k). Those cannot be configured by the OS and are set
@@ -465,15 +466,23 @@ be provisioned for that queue).</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p>Note about masking:</p>
-<p class="last">If the prio is set to 0xff, this call will cause the interrupt to be
-masked.</p>
+<p>If the prio is set to 0xff, this call will cause the interrupt to
+be masked (*). This function will not clobber the source P/Q bits (**).
+It will however set the IVT/EAS “mask” bit if the prio passed
+is 0xff which means that interrupt events from the ESB will be
+discarded, potentially leaving the ESB in a stale state. Thus
+care must be taken by the caller to “cleanup” the ESB state
+appropriately before enabling an interrupt with this.</p>
+<p>(*) Escalation interrupts cannot be masked via this function</p>
+<p class="last">(**) The exception to this rule is interrupt sources that have
+the OPAL_XIVE_IRQ_MASK_VIA_FW flag set. For such sources, the OS
+should make no assumption as to the state of the ESB and this
+function <em>will</em> perform all the necessary masking and unmasking.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">This function might clobber the source P/Q bits. An interrupt
-masked this way will be in a state where the events will be lost
-while masked and not replayed while unmasked. Unkasking <em>will</em> clear
-the state of the source P/Q bits unconditionally.</p>
+<p class="last">This call contains an implicit opal_xive_sync() of the interrupt
+source (see OPAL_XIVE_SYNC below)</p>
 </div>
 <p>It is recommended for an OS exploiting the XIVE directly to not use
 this function for temporary driver-initiated masking of interrupts
@@ -481,8 +490,7 @@ but to directly mask using the P/Q bits of the source instead.</p>
 <p>Masking using this function is intended for the case where the OS has
 no handler registered for a given interrupt anymore or when registering
 a new handler for an interrupt that had none. In these case, losing
-interrupts happening while no handler was attached is considered fine
-and the source comes up in a “clean state” when used for the first time.</p>
+interrupts happening while no handler was attached is considered fine.</p>
 </li>
 </ul>
 </div>
@@ -500,7 +508,8 @@ and the source comes up in a “clean state” when used for the first time.</p>
 with a virtual processor and a priority.</p>
 <ul>
 <li><p class="first">out_qpage: will contain the physical address of the page where the
-interrupt events will be posted.</p>
+interrupt events will be posted or 0 if none has been configured
+yet.</p>
 </li>
 <li><p class="first">out_qsize: will contain the log2 of the size of the queue buffer
 or 0 if the queue hasn’t been populated. Example: 12 for a 4k page.</p>
@@ -514,11 +523,8 @@ interrupt associated with that queue.</p>
 <p class="first admonition-title">Warning</p>
 <p class="last">The “escalate_irq” is a special interrupt number, depending
 on the implementation it may or may not correspond to a normal
-XIVE source.  Masking of escalation IRQs is only supported
-using the PQ bits, passing a priority of 0xff to opal_set_xive or
-opal_xive_set_irq_configuration() will in effect only affect
-the PQ bits. Being MSIs though, they do support the special
-“01” combination for ‘interrupt off’.</p>
+XIVE source. Those interrupts have no triggers, and will not
+be masked by opal_set_irq_config() with a prio of 0xff.</p>
 </div>
 </li>
 <li><p class="first">out_qflags: will contain flags defined as follow:</p>
@@ -570,7 +576,14 @@ the queue.</p>
 <li><p class="first">qflags: Flags (see definitions in opal_xive_get_queue_info)</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Should this have the side effect of resetting the toggle/generation ?</p>
+<p class="last">This call will reset the generation bit to 1 and the queue
+production pointer to 0.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The PQ bits of the escalation interrupts will be set to 00
+when OPAL_XIVE_EQ_ENABLED is set, and to 01 (masked) when
+disabling it.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -602,8 +615,8 @@ one page per chip. OPAL will keep returning the above error until
 enough pages have been provided.</p>
 </div>
 </div>
-<div class="section" id="opal-xive-alloc-vp-block">
-<h3>OPAL_XIVE_ALLOC_VP_BLOCK<a class="headerlink" href="#opal-xive-alloc-vp-block" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="opal-xive-allocate-vp-block">
+<h3>OPAL_XIVE_ALLOCATE_VP_BLOCK<a class="headerlink" href="#opal-xive-allocate-vp-block" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int64_t</span> <span class="nf">opal_xive_alloc_vp_block</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">alloc_order</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -643,22 +656,22 @@ below with the OPAL_XIVE_VP_ENABLED flag cleared before use.</p>
                               <span class="kt">uint32_t</span> <span class="o">*</span><span class="n">chip_id</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>This call returns information about an allocated VP:</p>
+<p>This call returns information about a VP:</p>
 <ul>
-<li><p class="first">flags  :</p>
+<li><p class="first">flags:</p>
 <ul>
 <li><p class="first">OPAL_XIVE_VP_ENABLED</p>
 <p>This must be set for the VP to be usable and cleared before freeing it</p>
 </li>
 </ul>
 </li>
-<li><p class="first">cam_value : This is the value to program into the thread management
+<li><p class="first">cam_value: This is the value to program into the thread management
 area to dispatch that VP (ie, an encoding of the block + index).</p>
 </li>
 <li><p class="first">report_cl_pair:  This is the real address of the reporting cache line
-pair for that VP (defaults to 0)</p>
+pair for that VP (defaults to 0, ie disabled)</p>
 </li>
-<li><p class="first">chip_id : The chip that VCPU was allocated on</p>
+<li><p class="first">chip_id: The chip that VCPU was allocated on</p>
 </li>
 </ul>
 </div>
@@ -669,6 +682,24 @@ pair for that VP (defaults to 0)</p>
                               <span class="kt">uint64_t</span> <span class="n">report_cl_pair</span><span class="p">);</span>
 </pre></div>
 </div>
+<p>This call configures a VP:</p>
+<ul>
+<li><p class="first">flags:</p>
+<ul>
+<li><p class="first">OPAL_XIVE_VP_ENABLED</p>
+<p>This must be set for the VP to be usable and cleared before freeing it.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This can be used to disable the boot time VPs though this
+isn’t recommended. This must be used to enable allocated VPs.</p>
+</div>
+</li>
+</ul>
+</li>
+<li><p class="first">report_cl_pair: This is the real address of the reporting cache line
+pair for that VP or 0 to disable.</p>
+</li>
+</ul>
 </div>
 <div class="section" id="opal-xive-allocate-irq">
 <h3>OPAL_XIVE_ALLOCATE_IRQ<a class="headerlink" href="#opal-xive-allocate-irq" title="Permalink to this headline">¶</a></h3>
@@ -676,7 +707,7 @@ pair for that VP (defaults to 0)</p>
 </pre></div>
 </div>
 <p>This call allocates a software IRQ on a given chip. It returns the
-interrupt number or an error.</p>
+interrupt number or a negative error code.</p>
 </div>
 <div class="section" id="opal-xive-free-irq">
 <h3>OPAL_XIVE_FREE_IRQ<a class="headerlink" href="#opal-xive-free-irq" title="Permalink to this headline">¶</a></h3>
@@ -686,6 +717,80 @@ interrupt number or an error.</p>
 <p>This call frees a software IRQ that was allocated by
 opal_xive_allocate_irq. Passing any other interrupt number
 will result in an OPAL_PARAMETER error.</p>
+</div>
+<div class="section" id="opal-xive-sync">
+<h3>OPAL_XIVE_SYNC<a class="headerlink" href="#opal-xive-sync" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int64_t</span> <span class="nf">opal_xive_sync</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">type</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">id</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This call is uses to synchronize some HW queues to ensure various changes
+have taken effect to the point where their effects are visible to the
+processor.</p>
+<ul>
+<li><p class="first">type: Type of synchronization:</p>
+<ul>
+<li><p class="first">XIVE_SYNC_EAS: Synchronize a source. “id” is the girq number of the
+interrupt. This will ensure that any change to the PQ bits or the
+interrupt targetting has taken effect.</p>
+</li>
+<li><p class="first">XIVE_SYNC_QUEUE: Synchronize a target queue. “id” is the girq number
+of the interrupt. This will ensure that any previous occurrence of the
+interrupt has reached the in-memory queue and is visible to the processor.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">XIVE_SYNC_EAS and XIVE_SYNC_QUEUE can be used together
+(ie. XIVE_SYNC_EAS | XIVE_SYNC_QUEUE) to completely synchronize
+the path of an interrupt to its queue.</p>
+</div>
+</li>
+</ul>
+</li>
+<li><p class="first">id: Depends on the synchronization type, see above</p>
+</li>
+</ul>
+</div>
+<div class="section" id="opal-xive-dump">
+<h3>OPAL_XIVE_DUMP<a class="headerlink" href="#opal-xive-dump" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-c"><div class="highlight"><pre><span></span><span class="kt">int64_t</span> <span class="nf">opal_xive_dump</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">type</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">id</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This is a debugging call that will dump in the OPAL console various
+state information about the XIVE.</p>
+<ul class="simple">
+<li>type: Type of info to dump:<ul>
+<li><dl class="first docutils">
+<dt>XIVE_DUMP_TM_HYP:  Dump the TIMA area for hypervisor physical thread</dt>
+<dd>“id” is the PIR value of the thread</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>XIVE_DUMP_TM_POOL: Dump the TIMA area for the hypervisor pool</dt>
+<dd>“id” is the PIR value of the thread</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>XIVE_DUMP_TM_OS:   Dump the TIMA area for the OS</dt>
+<dd>“id” is the PIR value of the thread</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>XIVE_DUMP_TM_USER: Dump the TIMA area for the “user” area (unsupported)</dt>
+<dd>“id” is the PIR value of the thread</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>XIVE_DUMP_VP:      Dump the state of a VP structure</dt>
+<dd>“id” is the VP id</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>XIVE_DUMP_EMU:     Dump the state of the XICS emulation for a thread</dt>
+<dd>“id” is the PIR value of the thread</dd>
+</dl>
+</li>
+</ul>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -711,12 +816,14 @@ will result in an OPAL_PARAMETER error.</p>
 <li><a class="reference internal" href="#opal-xive-get-queue-info">OPAL_XIVE_GET_QUEUE_INFO</a></li>
 <li><a class="reference internal" href="#opal-xive-set-queue-info">OPAL_XIVE_SET_QUEUE_INFO</a></li>
 <li><a class="reference internal" href="#opal-xive-donate-page">OPAL_XIVE_DONATE_PAGE</a></li>
-<li><a class="reference internal" href="#opal-xive-alloc-vp-block">OPAL_XIVE_ALLOC_VP_BLOCK</a></li>
+<li><a class="reference internal" href="#opal-xive-allocate-vp-block">OPAL_XIVE_ALLOCATE_VP_BLOCK</a></li>
 <li><a class="reference internal" href="#opal-xive-free-vp-block">OPAL_XIVE_FREE_VP_BLOCK</a></li>
 <li><a class="reference internal" href="#opal-xive-get-vp-info">OPAL_XIVE_GET_VP_INFO</a></li>
 <li><a class="reference internal" href="#opal-xive-set-vp-info">OPAL_XIVE_SET_VP_INFO</a></li>
 <li><a class="reference internal" href="#opal-xive-allocate-irq">OPAL_XIVE_ALLOCATE_IRQ</a></li>
 <li><a class="reference internal" href="#opal-xive-free-irq">OPAL_XIVE_FREE_IRQ</a></li>
+<li><a class="reference internal" href="#opal-xive-sync">OPAL_XIVE_SYNC</a></li>
+<li><a class="reference internal" href="#opal-xive-dump">OPAL_XIVE_DUMP</a></li>
 </ul>
 </li>
 </ul>
@@ -762,7 +869,7 @@ will result in an OPAL_PARAMETER error.</p>
         <li class="right" >
           <a href="xscom-node-bindings.html" title="XSCOM Bindings"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">skiboot v5.8-rc1-1-g87f1c8745d33-stewart-dirty-1892193
+        <li class="nav-item nav-item-0"><a href="index.html">skiboot v5.8-72-g3f936bae970e
  documentation</a> &#187;</li> 
       </ul>
     </div>
