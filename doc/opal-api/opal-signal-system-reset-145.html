@@ -5,14 +5,14 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>OPAL_SIGNAL_SYSTEM_RESET &#8212; skiboot v5.8-72-g3f936bae970e
+    <title>OPAL_SIGNAL_SYSTEM_RESET &#8212; skiboot v5.8-130-g712837cedca0
  documentation</title>
     <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     'v5.8-72-g3f936bae970e',
+        VERSION:     'v5.8-130-g712837cedca0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
@@ -24,7 +24,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="OPAL_SYNC_HOST_REBOOT" href="opal-sync-host-reboot-87.html" />
+    <link rel="next" title="OPAL_SLW_SET_REG" href="opal-slw-set-reg-100.html" />
     <link rel="prev" title="OPAL_SET_XIVE" href="opal-set-xive-19.html" /> 
   </head>
   <body>
@@ -35,12 +35,12 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="opal-sync-host-reboot-87.html" title="OPAL_SYNC_HOST_REBOOT"
+          <a href="opal-slw-set-reg-100.html" title="OPAL_SLW_SET_REG"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="opal-set-xive-19.html" title="OPAL_SET_XIVE"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-72-g3f936bae970e
+        <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-130-g712837cedca0
  documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">OPAL API Documentation</a> &#187;</li> 
       </ul>
@@ -58,11 +58,12 @@
 </div>
 <p>This OPAL call causes the specified cpu(s) to be reset to the system
 reset exception handler (0x100).</p>
-<p>The exact contents of system registers (e.g., SRR1 wakeup causes) may
-vary depending on implementation and should not be relied upon.</p>
-<p>Resetting active threads on the same core as this call is run may
-not be supported by some platforms. In that case, OPAL_PARTIAL will be
-returned and NONE of the interrupts will be delivered.</p>
+<p>The SRR1 register will indicate a power-saving wakeup when appropriate,
+and the wake reason will be System Reset (see Power ISA).</p>
+<p>This interrupt may not be recoverable in some cases (e.g., if it is
+raised when the target has MSR[RI]=0), so it should not be used in
+normal operation, but only for crashing, debugging, and similar
+exceptional cases.</p>
 <div class="section" id="arguments">
 <h2>Arguments<a class="headerlink" href="#arguments" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">int32_t</span> <span class="n">cpu_nr</span>
@@ -76,15 +77,19 @@ returned and NONE of the interrupts will be delivered.</p>
 <h2>Returns<a class="headerlink" href="#returns" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt>OPAL_SUCCESS</dt>
-<dd>The power down was updated successful.</dd>
+<dd>The system reset requests to target CPU(s) was successful. This returns
+asynchronously without acknowledgement from targets that system reset
+interrupt processing has completed or even started.</dd>
 <dt>OPAL_PARAMETER</dt>
 <dd>A parameter was incorrect.</dd>
 <dt>OPAL_HARDWARE</dt>
-<dd>Hardware indicated failure during reset.</dd>
+<dd>Hardware indicated failure during reset, some or all of the target CPUs
+may have the system reset delivered.</dd>
+<dt>OPAL_CONSTRAINED</dt>
+<dd>Platform does not support broadcast operations.</dd>
 <dt>OPAL_PARTIAL</dt>
-<dd>Platform can not reset all requested CPUs at this time. This requires
-platform-specific code to work around, otherwise to be treated as
-failure. No CPUs are reset.</dd>
+<dd>Platform can not reset sibling threads on the same core as requested.
+None of the specified CPUs are reset in this case.</dd>
 <dt>OPAL_UNSUPPORTED</dt>
 <dd>This processor/platform is not supported.</dd>
 </dl>
@@ -110,8 +115,8 @@ failure. No CPUs are reset.</dd>
   <p class="topless"><a href="opal-set-xive-19.html"
                         title="previous chapter">OPAL_SET_XIVE</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="opal-sync-host-reboot-87.html"
-                        title="next chapter">OPAL_SYNC_HOST_REBOOT</a></p>
+  <p class="topless"><a href="opal-slw-set-reg-100.html"
+                        title="next chapter">OPAL_SLW_SET_REG</a></p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
@@ -140,12 +145,12 @@ failure. No CPUs are reset.</dd>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="opal-sync-host-reboot-87.html" title="OPAL_SYNC_HOST_REBOOT"
+          <a href="opal-slw-set-reg-100.html" title="OPAL_SLW_SET_REG"
              >next</a> |</li>
         <li class="right" >
           <a href="opal-set-xive-19.html" title="OPAL_SET_XIVE"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-72-g3f936bae970e
+        <li class="nav-item nav-item-0"><a href="../index.html">skiboot v5.8-130-g712837cedca0
  documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="index.html" >OPAL API Documentation</a> &#187;</li> 
       </ul>
